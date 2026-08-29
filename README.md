@@ -80,7 +80,70 @@ prisma/
 └── schema.prisma     # Schéma MySQL
 ```
 
-## Déploiement production (sans Docker)
+## Déploiement Hostinger — stop3mr.babitechs.com
+
+Stop 3MR est une app **Node.js (Next.js)**, pas du PHP. Le dossier `public_html/stop3mr` sert uniquement de vitrine Apache ; Hostinger y pose un `.htaccess` et fait tourner Node **à côté**, dans `~/domains/stop3mr.babitechs.com/nodejs`. Ne pas y copier le projet à la main.
+
+**Plan requis :** Business Web Hosting, ou Cloud Startup / Professional / Enterprise (Web App Node.js dans hPanel).
+
+### 1. Base MySQL
+
+1. hPanel → **Bases de données** → MySQL → créer `stop3mr` (utf8mb4).
+2. Noter utilisateur, mot de passe, hôte (`localhost` si Node et MySQL sont sur le même compte).
+3. `DATABASE_URL` : `mysql://USER:PASSWORD@localhost:3306/NOM_BASE`  
+   (encoder `@`, `#`, `%` dans le mot de passe : `@` → `%40`).
+
+### 2. Site Node.js (pas un site PHP)
+
+Si le sous-domaine a été créé comme site PHP/HTML, **retirez-le** des Websites (le dossier vide peut rester). Puis :
+
+1. hPanel → **Websites** → **Add Website** → **Node.js web app**.
+2. **Import Git repository** → Connect with GitHub → autoriser **openedsky/stop3mr**.
+3. Branche `main`, domaine **stop3mr.babitechs.com**.
+4. Réglages (Hostinger les pré-remplit souvent) :
+   - Framework : **Next.js**
+   - Node.js : **20** ou **22**
+   - Build : `npm run build`
+   - Output : `.next`
+   - Entry file : `server.js`
+5. **Variables d’environnement** (avant le premier Deploy) :
+
+| Clé | Valeur |
+|-----|--------|
+| `NODE_ENV` | `production` |
+| `NEXTAUTH_URL` | `https://stop3mr.babitechs.com` |
+| `APP_PUBLIC_URL` | `https://stop3mr.babitechs.com` |
+| `TRUST_PROXY` | `true` |
+| `DATABASE_URL` | chaîne MySQL ci-dessus |
+| `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
+| `RL_INTERNAL_SECRET` | autre `openssl rand -base64 32` |
+| `ENCRYPTION_KEY` | `openssl rand -hex 32` (64 caractères) |
+| `DEFAULT_SITE_CODE` | `PR` |
+
+6. **Deploy**. Les prochains `git push` sur `main` relancent le build.
+
+### 3. Schéma et premier admin
+
+Après un build vert, en SSH (Terminal hPanel) :
+
+```bash
+cd ~/domains/stop3mr.babitechs.com/nodejs
+npx prisma db push
+npx prisma db seed
+```
+
+(Si `tsx` n’est pas dispo en prod, lancer le seed une fois depuis votre PC avec le `DATABASE_URL` Hostinger et l’accès distant MySQL activé.)
+
+Comptes seed : `admin` / `admin` — **changer le mot de passe tout de suite**.
+
+### 4. SSL et DNS
+
+- DNS : enregistrement **A** de `stop3mr` vers l’IP du plan Hostinger (souvent déjà là).
+- SSL : hPanel → SSL → activer Let’s Encrypt sur `stop3mr.babitechs.com`.
+
+Logs : dashboard du site Node → **Runtime Logs** / **Deployments**. 403 après un redeploy : relancer un Deploy pour régénérer le `.htaccess` (ne pas l’éditer à la main).
+
+## Déploiement production (VPS)
 
 1. **Serveur** : VPS avec Node.js LTS, MySQL 8, Nginx, PM2
 2. **Build** : `npm run build`
@@ -88,8 +151,6 @@ prisma/
 4. **Nginx** : reverse proxy vers port 3000 + certificat HTTPS (Certbot)
 5. **Sauvegardes** : cron + `mysqldump stop3mr`
 6. **Variables** : configurer `.env` avec `NEXTAUTH_SECRET`, `ENCRYPTION_KEY`, SMTP
-
-Voir le cahier des charges section 5.5 pour le détail complet.
 
 ## API principales
 

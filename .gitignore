@@ -49,6 +49,8 @@ spec.txt
 # copies locales — ne pas déployer
 /public/backup/
 /public/uploads/
+/test.pdf
+/test-devis.pdf
 
 # comptes test (mots de passe triviaux)
 /prisma/data/comptes-test.csv
