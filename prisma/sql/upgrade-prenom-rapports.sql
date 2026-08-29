@@ -1,0 +1,22 @@
+ALTER TABLE utilisateurs
+  ADD COLUMN prenom VARCHAR(100) NULL AFTER role;
+
+CREATE TABLE IF NOT EXISTS rapports (
+  id INT NOT NULL AUTO_INCREMENT,
+  auteur_id INT NOT NULL,
+  centre_id INT NULL,
+  type ENUM('SITUATION_VENTE','RUPTURE_STOCK','ANOMALIE_CONTROLE','CONTREFACON','INCIDENT_SITE','AUTRE') NOT NULL,
+  statut ENUM('BROUILLON','SOUMIS','LU') NOT NULL DEFAULT 'SOUMIS',
+  titre VARCHAR(200) NOT NULL,
+  contenu TEXT NOT NULL,
+  periode_debut DATETIME(3) NULL,
+  periode_fin DATETIME(3) NULL,
+  cree_le DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  mis_a_jour_le DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  INDEX (auteur_id),
+  INDEX (centre_id),
+  INDEX (cree_le),
+  CONSTRAINT rapports_auteur_fk FOREIGN KEY (auteur_id) REFERENCES utilisateurs(id),
+  CONSTRAINT rapports_centre_fk FOREIGN KEY (centre_id) REFERENCES centres_controle(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

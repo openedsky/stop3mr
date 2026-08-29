@@ -1,0 +1,534 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OPERATEUR
+  ADMINISTRATEUR
+  COMMERCIAL
+  AGENT_CT
+}
+
+enum StatutPlaque {
+  EN_STOCK
+  AFFECTEE
+  VENDUE
+}
+
+enum TypeProduit {
+  STOP
+  LIMITATION_VITESSE
+}
+
+enum FamilleProduit {
+  LIMITATION
+  PLAQUE_ROUGE
+  PLAQUE_BLANCHE
+  BANDES_ROUGE_JAUNE
+  BANDES_ROUGE_BLANC
+}
+
+enum ResultatVerification {
+  AUTHENTIQUE
+  INCONNUE
+  CONTREFAITE
+}
+
+enum StatutFacture {
+  BROUILLON
+  EMISE
+  PARTIELLEMENT_PAYEE
+  PAYEE
+  ANNULEE
+}
+
+enum ModePaiement {
+  ESPECES
+  VIREMENT
+  CHEQUE
+  MOBILE_MONEY
+  AUTRE
+}
+
+enum TypeClient {
+  PARTICULIER
+  ENTREPRISE
+}
+
+enum CanalVente {
+  COMMERCIAL
+  DIRECTE
+}
+
+enum TypePieceIdentite {
+  CNI
+  PASSEPORT
+  CARTE_CONSULAIRE
+  AUTRE
+}
+
+enum FneStatut {
+  NON_APPLICABLE
+  EN_ATTENTE
+  SOUMIS
+  VALIDE
+  REJETE
+}
+
+enum TypeCommission {
+  VENTE
+  CONTROLE
+}
+
+enum TypeRapport {
+  SITUATION_VENTE
+  RUPTURE_STOCK
+  ANOMALIE_CONTROLE
+  CONTREFACON
+  INCIDENT_SITE
+  AUTRE
+}
+
+enum StatutRapport {
+  BROUILLON
+  SOUMIS
+  LU
+}
+
+model Utilisateur {
+  id                   Int                 @id @default(autoincrement())
+  identifiant          String              @unique @db.VarChar(100)
+  motDePasseHash       String              @map("mot_de_passe_hash") @db.VarChar(255)
+  role                 Role                @default(OPERATEUR)
+  prenom               String?             @db.VarChar(100)
+  nom                  String?             @db.VarChar(150)
+  codeCommercial       Int?                @unique @map("code_commercial")
+  email                String?             @db.VarChar(255)
+  telephone            String?             @db.VarChar(50)
+  actif                Boolean             @default(true)
+  centreControleId     Int?                @map("centre_controle_id")
+  centreControle       CentreControle?     @relation(fields: [centreControleId], references: [id], onDelete: SetNull)
+  creeLe               DateTime            @default(now()) @map("cree_le")
+  journalAudit         JournalAudit[]
+  plaquesCreees        Plaque[]            @relation("PlaqueCreateur")
+  plaquesAffectees     Plaque[]            @relation("PlaqueCommercial")
+  clientsCrees         Client[]            @relation("ClientCreateur")
+  ventesEnregistrees   Vente[]             @relation("VenteVendeur")
+  facturesCrees        Facture[]           @relation("FactureCreateur")
+  recusCrees           RecuPaiement[]      @relation("RecuCreateur")
+  verifications        Verification[]
+  affectationsFaites   AffectationStock[]  @relation("AffectationOperateur")
+  affectationsRecues   AffectationStock[]  @relation("AffectationCommercial")
+  rapports             Rapport[]
+  paiementsRecus       PaiementCommission[] @relation("PaiementBeneficiaire")
+  paiementsCrees       PaiementCommission[] @relation("PaiementCreateur")
+  secretsTemporaires   SecretTemporaire[]
+
+  @@index([role, actif])
+  @@index([centreControleId])
+  @@map("utilisateurs")
+}
+
+model CentreControle {
+  id             Int             @id @default(autoincrement())
+  code           String          @unique @db.VarChar(20)
+  libelle        String          @db.VarChar(200)
+  pays           String          @default("Côte d'Ivoire") @db.VarChar(100)
+  ville          String?         @db.VarChar(100)
+  commune        String?         @db.VarChar(100)
+  quartier       String?         @db.VarChar(100)
+  adresse        String?         @db.VarChar(255)
+  latitude       Float?
+  longitude      Float?
+  actif          Boolean         @default(true)
+  creeLe         DateTime        @default(now()) @map("cree_le")
+  agents         Utilisateur[]
+  ventes         Vente[]
+  verifications  Verification[]
+  rapports       Rapport[]
+
+  @@index([pays, ville])
+  @@index([actif])
+  @@map("centres_controle")
+}
+
+model Produit {
+  id                   Int            @id @default(autoincrement())
+  code                 String         @unique @db.VarChar(40)
+  libelle              String         @db.VarChar(255)
+  description          String?        @db.Text
+  famille              FamilleProduit
+  dimensions           String         @db.VarChar(80)
+  visibilite           String         @db.VarChar(80)
+  prixHt                     Int            @map("prix_ht")
+  commissionTaux             Int            @default(10) @map("commission_taux")
+  commissionTauxControleur   Int            @default(10) @map("commission_taux_controleur")
+  usagePrincipal             String         @map("usage_principal") @db.VarChar(255)
+  vitessesDisponibles  String?        @map("vitesses_disponibles") @db.VarChar(80)
+  barre                Boolean        @default(false)
+  imagePath            String?        @map("image_path") @db.VarChar(255)
+  actif                Boolean        @default(true)
+  ordre                Int            @default(0)
+  creeLe               DateTime       @default(now()) @map("cree_le")
+  misAJourLe           DateTime       @updatedAt @map("mis_a_jour_le")
+  plaques              Plaque[]
+
+  @@index([famille, actif])
+  @@map("produits")
+}
+
+model SiteProduction {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(10)
+  libelle   String   @db.VarChar(150)
+  pays      String   @default("Côte d'Ivoire") @db.VarChar(100)
+  ville     String?  @db.VarChar(100)
+  commune   String?  @db.VarChar(100)
+  quartier  String?  @db.VarChar(100)
+  adresse   String?  @db.VarChar(255)
+  latitude  Float?
+  longitude Float?
+  actif     Boolean  @default(true)
+  creeLe    DateTime @default(now()) @map("cree_le")
+  plaques   Plaque[]
+
+  @@index([actif])
+  @@map("sites_production")
+}
+
+model CompteurSerie {
+  id         Int      @id @default(autoincrement())
+  siteCode   String   @map("site_code") @db.VarChar(10)
+  datePrefix String   @map("date_prefix") @db.VarChar(6)
+  dernierNum Int      @default(0) @map("dernier_num")
+  misAJourLe DateTime @updatedAt @map("mis_a_jour_le")
+
+  @@unique([siteCode, datePrefix])
+  @@map("compteurs_serie")
+}
+
+model CompteurDocument {
+  id         Int      @id @default(autoincrement())
+  type       String   @db.VarChar(10)
+  annee      Int
+  dernierNum Int      @default(0) @map("dernier_num")
+  misAJourLe DateTime @updatedAt @map("mis_a_jour_le")
+
+  @@unique([type, annee])
+  @@map("compteurs_document")
+}
+
+model Plaque {
+  id                  Int             @id @default(autoincrement())
+  numeroSerie         String          @unique @map("numero_serie") @db.VarChar(30)
+  qrCodeData          String          @map("qr_code_data") @db.Text
+  tokenEnregistrement String?         @unique @map("token_enregistrement") @db.VarChar(64)
+  typeProduit         TypeProduit     @map("type_produit")
+  produitId           Int             @map("produit_id")
+  produit             Produit         @relation(fields: [produitId], references: [id], onDelete: Restrict)
+  vitesseLimitation   Int?            @map("vitesse_limitation")
+  siteProduction      String          @default("YP") @map("site_production") @db.VarChar(10)
+  site                SiteProduction  @relation(fields: [siteProduction], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  dateFabrication     DateTime        @default(now()) @map("date_fabrication")
+  statut              StatutPlaque    @default(EN_STOCK)
+  prixReference       Int             @default(3000) @map("prix_reference")
+  commercialId        Int?            @map("commercial_id")
+  commercial          Utilisateur?    @relation("PlaqueCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  affecteeLe          DateTime?       @map("affectee_le")
+  createurId          Int?            @map("createur_id")
+  createur            Utilisateur?    @relation("PlaqueCreateur", fields: [createurId], references: [id], onDelete: SetNull)
+  vente               Vente?
+  verifications       Verification[]
+  affectations        AffectationStock[]
+  creeLe              DateTime        @default(now()) @map("cree_le")
+
+  @@index([statut])
+  @@index([typeProduit, siteProduction, statut])
+  @@index([produitId, statut])
+  @@index([commercialId, statut])
+  @@index([dateFabrication])
+  @@map("plaques")
+}
+
+model AffectationStock {
+  id            Int         @id @default(autoincrement())
+  plaqueId      Int         @map("plaque_id")
+  plaque        Plaque      @relation(fields: [plaqueId], references: [id], onDelete: Restrict)
+  commercialId  Int         @map("commercial_id")
+  commercial    Utilisateur @relation("AffectationCommercial", fields: [commercialId], references: [id], onDelete: Restrict)
+  operateurId   Int?        @map("operateur_id")
+  operateur     Utilisateur? @relation("AffectationOperateur", fields: [operateurId], references: [id], onDelete: SetNull)
+  dateAffectation DateTime  @default(now()) @map("date_affectation")
+
+  @@index([commercialId])
+  @@index([plaqueId])
+  @@map("affectations_stock")
+}
+
+model Verification {
+  id                      Int                   @id @default(autoincrement())
+  numeroSaisi             String                @map("numero_saisi") @db.VarChar(50)
+  plaqueId                Int?                  @map("plaque_id")
+  plaque                  Plaque?               @relation(fields: [plaqueId], references: [id], onDelete: SetNull)
+  agentId                 Int                   @map("agent_id")
+  agent                   Utilisateur           @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  centreId                Int?                  @map("centre_id")
+  centre                  CentreControle?       @relation(fields: [centreId], references: [id], onDelete: SetNull)
+  resultat                ResultatVerification
+  notes                   String?               @db.Text
+  immatriculationObservee String?               @map("immatriculation_observee") @db.VarChar(50)
+  horodatage              DateTime              @default(now())
+  commissionTaux          Int                   @default(0) @map("commission_taux")
+  commissionMontant       Int                   @default(0) @map("commission_montant")
+  commissionAuthPlaqueId  Int?                  @unique @map("commission_auth_plaque_id")
+  paiementCommissionId    Int?                  @map("paiement_commission_id")
+  paiementCommission      PaiementCommission?   @relation(fields: [paiementCommissionId], references: [id], onDelete: SetNull)
+
+  @@index([plaqueId])
+  @@index([agentId])
+  @@index([centreId])
+  @@index([horodatage])
+  @@index([numeroSaisi])
+  @@index([paiementCommissionId])
+  @@index([agentId, resultat, paiementCommissionId])
+  @@map("verifications")
+}
+
+model Client {
+  id                  Int                @id @default(autoincrement())
+  typeClient          TypeClient         @default(PARTICULIER) @map("type_client")
+  nom                 String             @db.VarChar(500)
+  raisonSociale       String?            @map("raison_sociale") @db.VarChar(500)
+  telephone           String             @db.VarChar(500)
+  email               String?            @db.VarChar(500)
+  ncc                 String?            @db.VarChar(50)
+  rccm                String?            @db.VarChar(50)
+  adresse             String?            @db.VarChar(500)
+  commune             String?            @db.VarChar(100)
+  ville               String?            @db.VarChar(100)
+  pays                String             @default("Côte d'Ivoire") @db.VarChar(100)
+  typePieceIdentite   TypePieceIdentite? @map("type_piece_identite")
+  numeroPieceIdentite String?            @map("numero_piece_identite") @db.VarChar(500)
+  fneStatut           FneStatut          @default(NON_APPLICABLE) @map("fne_statut")
+  fneReference        String?            @map("fne_reference") @db.VarChar(100)
+  nomHash             String?            @map("nom_hash") @db.VarChar(64)
+  telephoneHash       String?            @map("telephone_hash") @db.VarChar(64)
+  nomPrefixHash       String?            @map("nom_prefix_hash") @db.VarChar(64)
+  actif               Boolean            @default(true)
+  createurId          Int?               @map("createur_id")
+  createur            Utilisateur?       @relation("ClientCreateur", fields: [createurId], references: [id], onDelete: SetNull)
+  vehicules           Vehicule[]
+  ventes              Vente[]
+  factures            Facture[]
+  recus               RecuPaiement[]
+  creeLe              DateTime           @default(now()) @map("cree_le")
+  misAJourLe          DateTime           @updatedAt @map("mis_a_jour_le")
+
+  @@index([ncc])
+  @@index([nomHash])
+  @@index([telephoneHash])
+  @@index([nomPrefixHash])
+  @@index([actif, typeClient, fneStatut])
+  @@map("clients")
+}
+
+model Vehicule {
+  id              Int      @id @default(autoincrement())
+  clientId        Int      @map("client_id")
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  immatriculation String   @unique @db.VarChar(50)
+  marqueVehicule  String?  @map("marque_vehicule") @db.VarChar(100)
+  modeleVehicule  String?  @map("modele_vehicule") @db.VarChar(100)
+  actif           Boolean  @default(true)
+  ventes          Vente[]
+  creeLe          DateTime @default(now()) @map("cree_le")
+
+  @@index([clientId])
+  @@map("vehicules")
+}
+
+model Vente {
+  id                 Int              @id @default(autoincrement())
+  plaqueId           Int              @unique @map("plaque_id")
+  plaque             Plaque           @relation(fields: [plaqueId], references: [id], onDelete: Restrict)
+  clientId           Int              @map("client_id")
+  client             Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  vehiculeId         Int?             @map("vehicule_id")
+  vehicule           Vehicule?        @relation(fields: [vehiculeId], references: [id], onDelete: SetNull)
+  vendeurId          Int?             @map("vendeur_id")
+  vendeur            Utilisateur?     @relation("VenteVendeur", fields: [vendeurId], references: [id], onDelete: SetNull)
+  centreId           Int?             @map("centre_id")
+  centre             CentreControle?  @relation(fields: [centreId], references: [id], onDelete: SetNull)
+  canal              CanalVente       @default(COMMERCIAL)
+  prixVente              Int                 @default(0) @map("prix_vente")
+  commissionTaux         Int                 @default(0) @map("commission_taux")
+  commissionMontant      Int                 @default(0) @map("commission_montant")
+  dateVente              DateTime            @default(now()) @map("date_vente")
+  notifieLe              DateTime?           @map("notifie_le")
+  paiementCommissionId   Int?                @map("paiement_commission_id")
+  paiementCommission     PaiementCommission? @relation(fields: [paiementCommissionId], references: [id], onDelete: SetNull)
+  validiteMois           Int                 @default(24) @map("validite_mois")
+  dateExpiration         DateTime?           @map("date_expiration")
+  alerteExpirationJours  Int                 @default(30) @map("alerte_expiration_jours")
+  dateAlerte             DateTime?           @map("date_alerte")
+  facture                Facture?
+
+  @@index([clientId])
+  @@index([vehiculeId])
+  @@index([centreId])
+  @@index([vendeurId, dateVente])
+  @@index([dateVente])
+  @@index([canal, dateVente])
+  @@index([paiementCommissionId])
+  @@index([vendeurId, paiementCommissionId])
+  @@index([dateExpiration])
+  @@index([dateAlerte])
+  @@map("ventes")
+}
+
+model PaiementCommission {
+  id                 Int             @id @default(autoincrement())
+  numero             String          @unique @db.VarChar(30)
+  type               TypeCommission
+  utilisateurId      Int             @map("utilisateur_id")
+  utilisateur        Utilisateur     @relation("PaiementBeneficiaire", fields: [utilisateurId], references: [id], onDelete: Restrict)
+  periodeDebut       DateTime        @map("periode_debut")
+  periodeFin         DateTime        @map("periode_fin")
+  montant            Int
+  nombreOperations   Int             @map("nombre_operations")
+  modePaiement       ModePaiement    @map("mode_paiement")
+  reference          String?         @db.VarChar(100)
+  notes              String?         @db.Text
+  datePaiement       DateTime        @default(now()) @map("date_paiement")
+  createurId         Int?            @map("createur_id")
+  createur           Utilisateur?    @relation("PaiementCreateur", fields: [createurId], references: [id], onDelete: SetNull)
+  ventes             Vente[]
+  verifications      Verification[]
+  creeLe             DateTime        @default(now()) @map("cree_le")
+
+  @@index([utilisateurId, type])
+  @@index([datePaiement])
+  @@index([type, periodeDebut])
+  @@map("paiements_commissions")
+}
+
+model Facture {
+  id           Int            @id @default(autoincrement())
+  numero       String         @unique @db.VarChar(30)
+  clientId     Int            @map("client_id")
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  venteId      Int?           @unique @map("vente_id")
+  vente        Vente?         @relation(fields: [venteId], references: [id], onDelete: SetNull)
+  montantHt    Int            @map("montant_ht")
+  montantTtc   Int            @map("montant_ttc")
+  montantPaye  Int            @default(0) @map("montant_paye")
+  tva          Int            @default(0)
+  statut       StatutFacture  @default(BROUILLON)
+  dateEmission DateTime       @default(now()) @map("date_emission")
+  dateEcheance DateTime?      @map("date_echeance")
+  description  String?        @db.Text
+  createurId   Int?           @map("createur_id")
+  createur     Utilisateur?   @relation("FactureCreateur", fields: [createurId], references: [id], onDelete: SetNull)
+  recus        RecuPaiement[]
+  creeLe       DateTime       @default(now()) @map("cree_le")
+
+  @@index([clientId])
+  @@index([statut])
+  @@index([dateEmission])
+  @@map("factures")
+}
+
+model RecuPaiement {
+  id           Int          @id @default(autoincrement())
+  numero       String       @unique @db.VarChar(30)
+  factureId    Int          @map("facture_id")
+  facture      Facture      @relation(fields: [factureId], references: [id], onDelete: Restrict)
+  clientId     Int          @map("client_id")
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  montant      Int
+  modePaiement ModePaiement @map("mode_paiement")
+  datePaiement DateTime     @default(now()) @map("date_paiement")
+  reference    String?      @db.VarChar(100)
+  notes        String?      @db.Text
+  createurId   Int?         @map("createur_id")
+  createur     Utilisateur? @relation("RecuCreateur", fields: [createurId], references: [id], onDelete: SetNull)
+  creeLe       DateTime     @default(now()) @map("cree_le")
+
+  @@index([clientId])
+  @@index([factureId])
+  @@index([datePaiement])
+  @@map("recus_paiement")
+}
+
+model Rapport {
+  id            Int           @id @default(autoincrement())
+  auteurId      Int           @map("auteur_id")
+  auteur        Utilisateur   @relation(fields: [auteurId], references: [id], onDelete: Restrict)
+  centreId      Int?          @map("centre_id")
+  centre        CentreControle? @relation(fields: [centreId], references: [id], onDelete: Restrict)
+  type          TypeRapport
+  statut        StatutRapport @default(SOUMIS)
+  titre         String        @db.VarChar(200)
+  contenu       String        @db.Text
+  periodeDebut  DateTime?     @map("periode_debut")
+  periodeFin    DateTime?     @map("periode_fin")
+  creeLe        DateTime      @default(now()) @map("cree_le")
+  misAJourLe    DateTime      @updatedAt @map("mis_a_jour_le")
+
+  @@index([auteurId])
+  @@index([centreId])
+  @@index([creeLe])
+  @@index([type, statut])
+  @@map("rapports")
+}
+
+model JournalAudit {
+  id            Int          @id @default(autoincrement())
+  utilisateurId Int?         @map("utilisateur_id")
+  utilisateur   Utilisateur? @relation(fields: [utilisateurId], references: [id], onDelete: SetNull)
+  action        String       @db.VarChar(100)
+  cible         String?      @db.VarChar(255)
+  details       String?      @db.Text
+  horodatage    DateTime     @default(now())
+  adresseIp     String?      @map("adresse_ip") @db.VarChar(45)
+
+  @@index([horodatage])
+  @@index([utilisateurId, horodatage])
+  @@index([action])
+  @@map("journal_audit")
+}
+
+model Parametre {
+  id     Int    @id @default(autoincrement())
+  cle    String @unique @db.VarChar(100)
+  valeur String @db.Text
+
+  @@map("parametres")
+}
+
+model RateLimitBucket {
+  cle     String   @id @db.VarChar(191)
+  count   Int      @default(0)
+  resetAt DateTime @map("reset_at")
+
+  @@index([resetAt])
+  @@map("rate_limit_buckets")
+}
+
+model SecretTemporaire {
+  id            String      @id @db.VarChar(64)
+  utilisateurId Int         @map("utilisateur_id")
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  ciphertext    String      @db.Text
+  expireLe      DateTime    @map("expire_le")
+  consommeLe    DateTime?   @map("consomme_le")
+
+  @@index([utilisateurId])
+  @@index([expireLe])
+  @@map("secrets_temporaires")
+}
