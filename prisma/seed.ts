@@ -161,22 +161,6 @@ async function main() {
     });
   }
 
-  const rouge = await prisma.produit.findUnique({ where: { code: "ROUGE-1240" } });
-  const lim = await prisma.produit.findUnique({ where: { code: "LIM-GRIS-BARRE" } });
-
-  if (rouge) {
-    await prisma.plaque.updateMany({
-      where: { produitId: null, typeProduit: "STOP" },
-      data: { produitId: rouge.id, prixReference: rouge.prixHt },
-    });
-  }
-  if (lim) {
-    await prisma.plaque.updateMany({
-      where: { produitId: null, typeProduit: "LIMITATION_VITESSE" },
-      data: { produitId: lim.id, prixReference: lim.prixHt },
-    });
-  }
-
   await prisma.parametre.upsert({
     where: { cle: "compte_contribuable" },
     update: {},
