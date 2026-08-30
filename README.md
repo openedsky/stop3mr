@@ -106,11 +106,13 @@ Si le sous-domaine a été créé comme site PHP/HTML, **retirez-le** des Websit
    - Build : `npm run build`
    - Output : `.next`
    - Entry file : `server.js`
+   - Start : `npm start` (écoute 0.0.0.0 / PORT Hostinger)
 5. **Variables d’environnement** (avant le premier Deploy) :
 
 | Clé | Valeur |
 |-----|--------|
 | `NODE_ENV` | `production` |
+| `HOSTNAME` | `0.0.0.0` |
 | `NEXTAUTH_URL` | `https://stop3mr.babitechs.com` |
 | `APP_PUBLIC_URL` | `https://stop3mr.babitechs.com` |
 | `TRUST_PROXY` | `true` |

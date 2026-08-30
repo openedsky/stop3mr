@@ -1,22 +1,34 @@
 "use strict";
 
 process.env.NODE_ENV = "production";
+process.env.HOSTNAME = "0.0.0.0";
+process.env.HOST = "0.0.0.0";
 
-const { spawn } = require("child_process");
-const path = require("path");
+const { createServer } = require("http");
+const { parse } = require("url");
+const next = require("next");
 
-const port = process.env.PORT || "3000";
-// Never use Linux HOSTNAME (machine name) — binding to it fails and Hostinger returns 503.
-const host = process.env.HOST || "0.0.0.0";
-const nextBin = require.resolve("next/dist/bin/next");
+const port = Number(process.env.PORT) || 3000;
+const hostname = "0.0.0.0";
 
-const child = spawn(process.execPath, [nextBin, "start", "-H", host, "-p", String(port)], {
-  stdio: "inherit",
-  cwd: __dirname,
-  env: process.env,
-});
+const app = next({ dev: false, hostname, port, dir: __dirname });
+const handle = app.getRequestHandler();
 
-child.on("exit", (code, signal) => {
-  if (signal) process.kill(process.pid, signal);
-  process.exit(code ?? 1);
-});
+app
+  .prepare()
+  .then(() => {
+    const server = createServer((req, res) => {
+      handle(req, res, parse(req.url || "/", true));
+    });
+    server.on("error", (err) => {
+      console.error("[stop3mr] listen error", err);
+      process.exit(1);
+    });
+    server.listen(port, hostname, () => {
+      console.log(`[stop3mr] listening on http://${hostname}:${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error("[stop3mr] prepare failed", err);
+    process.exit(1);
+  });
