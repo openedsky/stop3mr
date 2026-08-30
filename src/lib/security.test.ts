@@ -116,7 +116,7 @@ describe("SEC-009 déchiffrement", () => {
       adresse: blob,
       numeroPieceIdentite: blob,
     };
-    const out = decryptClientRecord(client as never);
+    const out = decryptClientRecord(client as Parameters<typeof decryptClientRecord>[0]);
     assert.equal(out.nom, "");
     assert.equal(out.telephone, "");
     assert.equal(out.email, "");
