@@ -6,7 +6,8 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const port = process.env.PORT || "3000";
-const host = process.env.HOSTNAME || "0.0.0.0";
+// Never use Linux HOSTNAME (machine name) — binding to it fails and Hostinger returns 503.
+const host = process.env.HOST || "0.0.0.0";
 const nextBin = require.resolve("next/dist/bin/next");
 
 const child = spawn(process.execPath, [nextBin, "start", "-H", host, "-p", String(port)], {

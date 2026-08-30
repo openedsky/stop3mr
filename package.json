@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "node server.js",
+    "start": "next start -H 0.0.0.0",
     "db:deploy": "prisma db push",
     "lint": "next lint",
     "db:generate": "prisma generate",
