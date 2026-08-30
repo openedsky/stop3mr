@@ -15,6 +15,8 @@ function createTransporter() {
     port: Number(process.env.SMTP_PORT ?? 587),
     secure: Number(process.env.SMTP_PORT ?? 587) === 465,
     auth: { user, pass },
+    disableFileAccess: true,
+    disableUrlAccess: true,
   });
 }
 
